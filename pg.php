@@ -5,7 +5,7 @@ session_name('PG');
 session_start();
 $bg=2;
 $step=20;
-$version="1.0";
+$version="1.1";
 $bbs=['False','True'];
 $deny=['information_schema','pg_catalog','temp_tables','pg_toast'];
 class DBT {
@@ -891,7 +891,7 @@ case "20"://table browse
 				}else{
 				echo number_format(($le/1024),2)." KB";
 				}
-			}elseif(strlen($r_rw[$i]) > 70){
+			}elseif($r_rw[$i] && strlen($r_rw[$i]) > 70){
 				echo substr($r_rw[$i],0,70)."[...]";
 			}else{
 				echo empty($r_rw[$i])?'':htmlentities($r_rw[$i]);
