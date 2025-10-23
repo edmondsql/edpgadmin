@@ -5,7 +5,7 @@ session_name('PG');
 session_start();
 $bg=2;
 $step=20;
-$version="1.1";
+$version="1.2";
 $bbs=['False','True'];
 $deny=['information_schema','pg_catalog','temp_tables','pg_toast'];
 class DBT {
@@ -698,7 +698,7 @@ case "9":
 	if(isset($ed->sg[3])){//drop index
 		$idx=$ed->sg[3];
 		$q_alt=$ed->con->query("ALTER TABLE $tb DROP CONSTRAINT $idx");
-		$q_alt=$ed->con->query("DROP INDEX $idx");
+		if($q_alt==false) $q_alt=$ed->con->query("DROP INDEX $idx");
 		if($q_alt) $ed->redir("10/$db/$tb",['ok'=>"Successfully dropped"]);
 		else $ed->redir("10/$db/$tb",['err'=>"Drop failed"]);
 	}
@@ -1846,18 +1846,16 @@ case "48"://execute routine
 		$args=[];
 		foreach($params as $idx => $param){
 			$input_val=$ed->post('param_'.$idx);
-			if(in_array($param['type'],['int','integer','smallint','bigint','numeric','float','double precision'])){
-				$args[]=$input_val;
-			}elseif($param['type']=='boolean'){
-				$args[]=($input_val=='1'?'TRUE':'FALSE');
-			}else{
-				$args[]=$input_val;
-			}
+			if(in_array($param['type'],['int','integer','smallint','bigint','numeric','float','double precision'])) $args[]=$input_val;
+			elseif($param['type']=='boolean') $args[]=($input_val=='1'?'TRUE':'FALSE');
+			else $args[]=$input_val;
 		}
-		$call_sql="SELECT $sp(".implode(',',$args).")";
-		$q_exec=$ed->con->query($call_sql);
-		if($q_exec){
-			$result=$q_exec->fetch(1);
+		$sql=($ty=='procedure'?"CALL":"SELECT")." $sp(".implode(',',$args).")";
+		$q_x=$ed->con->query($sql);
+		if($q_x && $ty=='procedure'){
+			$ed->redir("5/$db",['ok'=>"Successfully executed"]);
+		}elseif($q_x && $ty=='function'){
+			$result=$q_x->fetch(1);
 			echo $head.$ed->menu($db,'',1)."<table><tr><th colspan='2'>Execution Result</th></tr><tr><td>".json_encode($result)."</td></tr></table>";
 		}else{
 			$ed->redir("48/$db/$sp/$ty",['err'=>"Routine execution failed"]);
@@ -1884,7 +1882,7 @@ case "49"://drop sp
 	if($ty=='trigger'){
 	$q=$ed->con->query("SELECT relname FROM pg_trigger t JOIN pg_class c ON t.tgrelid=c.oid WHERE tgname='$sp'");
 	$tg=' ON '.$q->fetch()[0];
-	}elseif($ty=='function'){
+	}elseif($ty=='function' || $ty=='procedure'){
 	$q_ty=$ed->con->query("SELECT oid::regprocedure FROM pg_proc WHERE proname='$sp'");
 	$sp=$q_ty->fetch()[0];
 	}
